@@ -1,61 +1,41 @@
-const express = require('express');
-const { authenticateJwt, SECRET } = require("../middleware/auth");
-const { User, Course, Admin } = require("../db");
-const router = express.Router();
+const { Router } = require("express");
+const User = require("../models/user");
 
-  router.post('/signup', async (req, res) => {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
-    if (user) {
-      res.status(403).json({ message: 'User already exists' });
-    } else {
-      const newUser = new User({ username, password });
-      await newUser.save();
-      const token = jwt.sign({ username, role: 'user' }, SECRET, { expiresIn: '1h' });
-      res.json({ message: 'User created successfully', token });
-    }
+const router = Router();
+
+router.get("/signin", (req, res) => {
+  return res.render("signin");
+});
+
+router.get("/signup", (req, res) => {
+  return res.render("signup");
+});
+
+router.post("/signin", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const token = await User.matchPasswordAndGenerateToken(email, password);
+
+    return res.cookie("token", token).redirect("/");
+  } catch (error) {
+    return res.render("signin", {
+      error: "Incorrect Email or Password",
+    });
+  }
+});
+
+router.get("/logout", (req, res) => {
+  res.clearCookie("token").redirect("/");
+});
+
+router.post("/signup", async (req, res) => {
+  const { fullName, email, password } = req.body;
+  await User.create({
+    fullName,
+    email,
+    password,
   });
-  
-  router.post('/login', async (req, res) => {
-    const { username, password } = req.headers;
-    const user = await User.findOne({ username, password });
-    if (user) {
-      const token = jwt.sign({ username, role: 'user' }, SECRET, { expiresIn: '1h' });
-      res.json({ message: 'Logged in successfully', token });
-    } else {
-      res.status(403).json({ message: 'Invalid username or password' });
-    }
-  });
-  
-  router.get('/courses', authenticateJwt, async (req, res) => {
-    const courses = await Course.find({published: true});
-    res.json({ courses });
-  });
-  
-  router.post('/courses/:courseId', authenticateJwt, async (req, res) => {
-    const course = await Course.findById(req.params.courseId);
-    console.log(course);
-    if (course) {
-      const user = await User.findOne({ username: req.user.username });
-      if (user) {
-        user.purchasedCourses.push(course);
-        await user.save();
-        res.json({ message: 'Course purchased successfully' });
-      } else {
-        res.status(403).json({ message: 'User not found' });
-      }
-    } else {
-      res.status(404).json({ message: 'Course not found' });
-    }
-  });
-  
-  router.get('/purchasedCourses', authenticateJwt, async (req, res) => {
-    const user = await User.findOne({ username: req.user.username }).populate('purchasedCourses');
-    if (user) {
-      res.json({ purchasedCourses: user.purchasedCourses || [] });
-    } else {
-      res.status(403).json({ message: 'User not found' });
-    }
-  });
-  
-  module.exports = router
+  return res.redirect("/");
+});
+
+module.exports = router;
