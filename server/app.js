@@ -17,13 +17,6 @@ const {
 const app = express();
 const PORT = 3000;
 
-mongoose
-  .connect("mongodb+srv://sayantan:sayantan22@cluster0.9z4n8ar.mongodb.net/", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    dbName: "blog",
-  })
-  .then((e) => console.log("MongoDB Connected"));
 
 app.set("view engine", "ejs");
 app.set("views", path.resolve("./views"));
